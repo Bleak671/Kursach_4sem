@@ -1,0 +1,10 @@
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\bin\Debug\Kursach♥.exe.config
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\bin\Debug\Kursach♥.exe
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\bin\Debug\Kursach♥.pdb
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach_.Properties.Resources.resources
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach♥.csproj.GenerateResource.cache
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach♥.exe
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach♥.pdb
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach_.FormMenu.resources
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach_.FormEnterance.resources
+C:\Users\Аrtyom\source\repos\Kursach♥\Kursach♥\obj\Debug\Kursach♥.csprojAssemblyReference.cache
