@@ -28,7 +28,8 @@ namespace Kursach_
         const int lengthShift = 1;
         const int hdrSize = 3;
         const int dataShift = 3;
-        const int APP_PORT = 9875;
+        const int TCP_PORT = 9875;
+        const int UDP_PORT = 9876;
 
         bool isGameStarted = false;
         bool isHostConnected = false;
@@ -39,6 +40,7 @@ namespace Kursach_
         String fullUserName;
         Client host;
         Task TcpRec;
+        Task UdpRec;
         public List<Client> clients = new List<Client>();
 
         public class Client
@@ -118,11 +120,46 @@ namespace Kursach_
             return localIP;
         }
 
+        private void UdpReceive()
+        {
+            while (isConnected)
+            {
+                UdpClient client = new UdpClient(UDP_PORT);
+                IPEndPoint iep = null;
+                byte[] data = client.Receive(ref iep);
+                Packet message = new Packet(data);
+                if (String.Compare(iep.Address.ToString(), GetLocalIPAddress()) == 0)
+                    continue;
+                client.Close();
+                switch (message.type)
+                {
+                    case 0: //Запрос на подключение к хосту
+                        TcpClient clientTcp = new TcpClient(iep.Address.ToString(), TCP_PORT);
+                        NetworkStream stream = clientTcp.GetStream();
+                        Client cl = new Client(new IPEndPoint(iep.Address, TCP_PORT), Encoding.Unicode.GetString(message.data), stream);
+                        if (!clients.Contains(cl))
+                        {
+                            message = new Packet(0, textBoxName.Text);
+                            stream.Write(message.getBytes(), 0, message.getBytes().Length);
+                            clients.Add(cl);
+                            this.Invoke(new MethodInvoker(() =>
+                            {
+                                listLobby.Items.Add(cl.name);
+                            }));
+                        }
+                        break;
+                    case 1: 
+
+                        break;
+                }
+            }
+        }
+
         private void TcpReceive()
         {
             while (isConnected)
             {
-                TcpListener listener = new TcpListener(IPAddress.Parse(GetLocalIPAddress()), APP_PORT);
+                TcpListener listener = new TcpListener(IPAddress.Parse(GetLocalIPAddress()), TCP_PORT);
                 listener.Start();
                 TcpClient client = listener.AcceptTcpClient();
                 if (String.Compare(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString(), GetLocalIPAddress()) == 0)
@@ -131,46 +168,20 @@ namespace Kursach_
                 byte[] data = new byte[bufferSize];
                 stream.Read(data, 0, data.Length);
                 Packet MessageTcp = new Packet(data);
-                if (MessageTcp.length > 3)
-                    MessageBox.Show(Encoding.Unicode.GetString(MessageTcp.data));
-                IPEndPoint iep = new IPEndPoint(IPAddress.Parse(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString()), APP_PORT);
+                IPEndPoint iep = new IPEndPoint(IPAddress.Parse(((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString()), TCP_PORT);
                 switch (MessageTcp.type)
                 {
-                    case 0: //Запрос на подключение к лобби
+                    case 0: //Установка TCP потока от клиента
                         if (!isGameStarted && isYouHost)
                         {
-                            client.Close();
-                            client = new TcpClient(new IPEndPoint(iep.Address, APP_PORT));
-                            stream.Close();
-                            stream = client.GetStream();
-                            Client ClientCheck = new Client(iep, Encoding.Unicode.GetString(MessageTcp.data), stream);
-                            if (!clients.Contains(ClientCheck))
+                            host = new Client(iep, Encoding.Unicode.GetString(MessageTcp.data), stream);
+                            this.Invoke(new MethodInvoker(() =>
                             {
-                                clients.Add(ClientCheck);
-                                this.Invoke(new MethodInvoker(() =>
-                                {
-                                    listLobby.Items.Add(ClientCheck.name);
-                                    listChat.Items.Add(DateTime.Now.Hour + "." + DateTime.Now.Minute + " " + ClientCheck.name + ": присоединился");
-                                }));
-
-                                MessageTcp = new Packet(1, userName);
-                                MessageBox.Show(Encoding.Unicode.GetString(MessageTcp.data));
-                                stream.Write(MessageTcp.getBytes(), 0, MessageTcp.getBytes().Length);
-
-                                foreach (Client cl in clients)
-                                {
-                                    if (cl.iep.Address != iep.Address)
-                                    {
-                                        MessageTcp = new Packet(2, ClientCheck.name);
-                                        cl.stream.Write(MessageTcp.getBytes(), 0, MessageTcp.getBytes().Length);
-                                        MessageTcp = new Packet(1, cl.name);
-                                        stream.Write(MessageTcp.getBytes(), 0, MessageTcp.getBytes().Length);
-                                    }
-                                }
-                            }
+                                listLobby.Items.Add(host.name);
+                            }));
                         }
                         break;
-                    case 1: //Ответ подключаемому пользователю
+                    case 1: 
                         MessageBox.Show(Encoding.Unicode.GetString(MessageTcp.data));
                         if (!isGameStarted)
                         {
@@ -237,16 +248,14 @@ namespace Kursach_
                     isConnected = true;
                     TcpRec = new Task(TcpReceive);
                     TcpRec.Start();
+                    UdpRec = new Task(UdpReceive);
+                    UdpRec.Start();
                 }
 
-                TcpClient clientTcp = new TcpClient(textBoxHostIP.Text, APP_PORT);
-                NetworkStream stream = clientTcp.GetStream();
-                host = new Client(new IPEndPoint(IPAddress.Parse(textBoxHostIP.Text), APP_PORT), null, stream);
+                UdpClient udpClient = new UdpClient();
                 Packet pck = new Packet(0, userName);
-                stream.Write(pck.getBytes(), 0, pck.getBytes().Length);
-                MessageBox.Show(Encoding.Unicode.GetString(pck.data));
-                stream.Close();
-                clientTcp.Close();
+                udpClient.Send(pck.getBytes(), pck.getBytes().Length, new IPEndPoint(IPAddress.Parse(textBoxHostIP.Text), UDP_PORT));
+                udpClient.Close();
                 MessageBox.Show("Запрос на подключение отправлен");
             }
             catch (Exception ex)
@@ -262,11 +271,13 @@ namespace Kursach_
                 isConnected = true;
                 TcpRec = new Task(TcpReceive);
                 TcpRec.Start();
+                UdpRec = new Task(UdpReceive);
+                UdpRec.Start();
             }
             isYouHost = true;
             MessageBox.Show("Лобби создано!\nПодключение через ваш IP");
             String wtf = GetLocalIPAddress();
-            host = new Client(new IPEndPoint(IPAddress.Parse(wtf), APP_PORT), null, null);
+            host = new Client(new IPEndPoint(IPAddress.Parse(wtf), TCP_PORT), null, null);
         }
 
         private void btnExit_Click(object sender, EventArgs e)
